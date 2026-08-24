@@ -3,7 +3,9 @@
 VEYZA is a marketplace and social network connecting car owners with car-care
 professionals (wash, detailing, ceramic coating, PPF, tinting, and more). This
 repository contains the full V1: a REST API backend, a React frontend, and a
-SQLite database with a realistic seed dataset.
+Postgres database with a realistic seed dataset.
+
+Deploying to production? See [DEPLOY.md](./DEPLOY.md) (Vercel + Render).
 
 ## Architecture
 
@@ -35,15 +37,19 @@ prices) live in the `CommissionSetting` DB table, editable from
 
 - Node.js 20+
 - npm
+- Docker (for a local Postgres instance) — or any Postgres 14+ you already have running
 
 ## Installation
 
 ```bash
+# Postgres (skip if you already have one running — just point DATABASE_URL at it)
+docker compose up -d
+
 # Backend
 cd server
-cp .env.example .env   # then edit JWT_SECRET for anything beyond local dev
+cp .env.example .env   # defaults match docker-compose.yml; edit JWT_SECRET for anything beyond local dev
 npm install
-npx prisma migrate dev   # creates server/prisma/dev.db and applies the schema
+npx prisma migrate dev   # creates the schema
 npm run seed              # populates categories, demo accounts, professionals, bookings...
 
 # Frontend
@@ -86,12 +92,12 @@ represented. 9 other fictional clients are seeded as well.
 
 ## Database
 
-SQLite is used for zero-ops local development (`server/prisma/dev.db`,
-gitignored). The schema is written to be trivially portable to Postgres:
-swap `provider = "sqlite"` for `"postgresql"` in `schema.prisma`, update
-`DATABASE_URL`, and re-run `prisma migrate dev` — no application code
-references SQLite-specific features. Enum-like fields are typed `String` (SQLite
-has no native enum support) and validated with `zod` at the API boundary.
+Postgres, both locally (via `docker-compose.yml`) and in production (a managed
+Render Postgres instance — see [DEPLOY.md](./DEPLOY.md)). Status/role/type
+fields are typed `String` rather than native enums (documented per-field,
+validated with `zod` at the API boundary) — not a Postgres limitation, just
+keeps the schema trivially portable if you ever need a different SQL
+provider.
 
 Re-seeding is idempotent for users, categories, and professionals (`upsert`),
 so `npm run seed` can be re-run safely; bookings/posts/notifications skip
@@ -128,6 +134,10 @@ Images (logos, covers, gallery, posts, avatars, vehicle photos) are uploaded
 via `POST /api/upload` (multipart, 8 MB max, JPEG/PNG/WEBP/GIF only) and
 served from `/uploads`. Seed data uses external placeholder images
 (picsum.photos) so the app looks populated without needing real photos.
+
+In production, point `UPLOAD_DIR` at a persistent disk (Render's filesystem is
+otherwise ephemeral and wipes uploaded files on every deploy) — see
+[DEPLOY.md](./DEPLOY.md).
 
 ## Known V1 scope boundaries
 

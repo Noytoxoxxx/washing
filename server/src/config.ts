@@ -15,7 +15,10 @@ export const PORT = Number(process.env.PORT || 4000);
 export const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 export const NODE_ENV = process.env.NODE_ENV || "development";
 
-export const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
+// Override with an absolute path (e.g. a Render persistent disk mount) in production so uploaded
+// files survive redeploys — the default is fine for local dev but Render's filesystem is otherwise
+// ephemeral and would silently lose every uploaded image on the next deploy.
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, "..", "uploads");
 export const MAX_UPLOAD_SIZE_MB = 8;
 export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 

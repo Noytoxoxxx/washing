@@ -1,13 +1,14 @@
-// VEYZA — Prisma schema (SQLite for zero-ops local/dev deploy; swap provider to postgresql for production)
-// NOTE: SQLite has no native enum support, so status/role/type fields are Strings with values
-// documented per-field and validated at the API layer (zod). This keeps a clean upgrade path to Postgres.
+// VEYZA — Prisma schema. Postgres in production (Render); docker-compose.yml runs the same
+// Postgres locally for development. Status/role/type fields are Strings rather than native
+// enums (documented per-field, validated at the API layer with zod) to keep the schema
+// trivially portable to other SQL providers if ever needed.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
