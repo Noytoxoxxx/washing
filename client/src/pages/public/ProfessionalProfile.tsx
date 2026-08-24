@@ -30,6 +30,7 @@ import { BookingModal } from "../../components/booking/BookingModal";
 import { ContactProfessionalModal } from "../../components/ContactProfessionalModal";
 import { Select } from "../../components/ui/Select";
 import { MessageSquare } from "lucide-react";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 
@@ -40,6 +41,7 @@ export function ProfessionalProfile() {
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({ queryKey: ["professional", slug], queryFn: () => professionalsApi.get(slug) });
+  useDocumentTitle(data?.professional?.companyName || "Professionnel");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);

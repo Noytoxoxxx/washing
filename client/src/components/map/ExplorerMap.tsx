@@ -6,21 +6,31 @@ import { Star } from "lucide-react";
 import { paths } from "../../lib/paths";
 import type { ProfessionalListItem } from "../../api/professionals";
 
-// Default Leaflet marker assets are broken by bundlers unless re-pointed explicitly.
+// Bundle marker assets via Vite instead of pointing at an external CDN (unpkg) —
+// a blocked or slow CDN request would otherwise crash the whole map at runtime.
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
 
 const founderIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: markerIcon2x,
+  shadowUrl: markerShadow,
   iconSize: [30, 46],
   iconAnchor: [15, 46],
   className: "hue-rotate-[220deg]",
 });
+
+// Leaflet's Marker applies `options.icon` via a plain object merge, so an explicit
+// `icon={undefined}` prop (rather than the prop being entirely absent) overwrites the
+// built-in default icon with `undefined` and crashes on render. Always pass a concrete icon.
+const defaultIcon = new L.Icon.Default();
 
 function Recenter({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -51,7 +61,7 @@ export function ExplorerMap({ professionals, center, selectedId, onSelect }: Pro
         <Marker
           key={p.id}
           position={[p.latitude as number, p.longitude as number]}
-          icon={p.isFounder ? founderIcon : undefined}
+          icon={p.isFounder ? founderIcon : defaultIcon}
           eventHandlers={{ click: () => onSelect?.(p.id) }}
         >
           <Popup>

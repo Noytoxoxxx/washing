@@ -18,6 +18,11 @@ export function ProtectedRoute({ roles, loginPath = paths.login, children }: { r
 export function GuestOnlyRoute({ redirectTo, children }: { redirectTo: string; children: ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (user) return <Navigate to={redirectTo} replace />;
+  if (user) {
+    // Always send an already-authenticated user to THEIR space, regardless of which
+    // guest-only page they landed on (e.g. a professional opening /connexion or /inscription).
+    const roleHome = user.role === "PROFESSIONAL" ? paths.pro : user.role === "ADMIN" ? paths.admin : redirectTo;
+    return <Navigate to={roleHome} replace />;
+  }
   return <>{children}</>;
 }

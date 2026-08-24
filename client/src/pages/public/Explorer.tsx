@@ -12,10 +12,12 @@ import { Pagination } from "../../components/ui/Pagination";
 import { Modal } from "../../components/ui/Modal";
 import { Button } from "../../components/ui/Button";
 import { Compass } from "lucide-react";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const PARIS_CENTER: [number, number] = [48.8566, 2.3522];
 
 export function Explorer() {
+  useDocumentTitle("Explorer");
   const [params, setParams] = useSearchParams();
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
   const [filtersOpen, setFiltersOpen] = useState(false);

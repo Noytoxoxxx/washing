@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, MapPin, ArrowRight, ShoppingBag, Compass, CalendarCheck } from "lucide-react";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { professionalsApi } from "../../api/professionals";
 import { categoriesApi } from "../../api/misc";
 import { postsApi } from "../../api/posts";
@@ -12,6 +13,7 @@ import { Button } from "../../components/ui/Button";
 import { paths } from "../../lib/paths";
 
 export function Home() {
+  useDocumentTitle("The car care network.");
   const navigate = useNavigate();
   const [q, setQ] = useState("");
 

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Sparkles, Crown, TrendingUp, Users, CheckCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { paths } from "../../lib/paths";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const BENEFITS = [
   { icon: Users, title: "Une nouvelle clientèle", text: "Soyez visible auprès des automobilistes qui cherchent un professionnel du car care près de chez eux." },
@@ -10,6 +11,7 @@ const BENEFITS = [
 ];
 
 export function BecomePro() {
+  useDocumentTitle("Devenir professionnel");
   return (
     <div>
       <section className="bg-ink px-4 py-20 text-center text-white sm:px-6">

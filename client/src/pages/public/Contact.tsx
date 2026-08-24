@@ -5,8 +5,10 @@ import { Textarea } from "../../components/ui/Textarea";
 import { Button } from "../../components/ui/Button";
 import { contactApi } from "../../api/misc";
 import { ApiClientError } from "../../api/client";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 export function Contact() {
+  useDocumentTitle("Contact");
   const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);

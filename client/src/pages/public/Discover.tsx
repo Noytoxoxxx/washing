@@ -7,8 +7,10 @@ import { CardSkeleton } from "../../components/ui/Skeleton";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Pagination } from "../../components/ui/Pagination";
 import { useAuth } from "../../context/AuthContext";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 export function Discover() {
+  useDocumentTitle("Découvrir");
   const { user } = useAuth();
   const [tab, setTab] = useState<"all" | "following">("all");
   const [page, setPage] = useState(1);

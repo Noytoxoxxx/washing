@@ -21,8 +21,8 @@ export function AdminSettings() {
     return drafts[plan.plan] ?? { ratePercent: String(plan.ratePercent), priceMonthly: String(plan.priceMonthly) };
   }
 
-  function setDraft(planKey: string, patch: Partial<{ ratePercent: string; priceMonthly: string }>) {
-    setDrafts((d) => ({ ...d, [planKey]: { ...draftFor({ plan: planKey, ratePercent: 0, priceMonthly: 0 }), ...d[planKey], ...patch } }));
+  function setDraft(plan: any, patch: Partial<{ ratePercent: string; priceMonthly: string }>) {
+    setDrafts((d) => ({ ...d, [plan.plan]: { ...draftFor(plan), ...patch } }));
   }
 
   async function save(plan: any) {
@@ -62,14 +62,14 @@ export function AdminSettings() {
                   type="number"
                   step="0.1"
                   value={draft.ratePercent}
-                  onChange={(e) => setDraft(plan.plan, { ratePercent: e.target.value })}
+                  onChange={(e) => setDraft(plan, { ratePercent: e.target.value })}
                 />
                 <Input
                   label="Prix mensuel (€)"
                   type="number"
                   disabled={isFounder}
                   value={draft.priceMonthly}
-                  onChange={(e) => setDraft(plan.plan, { priceMonthly: e.target.value })}
+                  onChange={(e) => setDraft(plan, { priceMonthly: e.target.value })}
                   hint={isFounder ? "Toujours gratuit — règle produit permanente." : undefined}
                 />
               </div>

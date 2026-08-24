@@ -24,9 +24,13 @@ export function Login() {
     setError(null);
     setLoading(true);
     try {
-      await login(email, password, remember);
+      const user = await login(email, password, remember);
       toast.success("Connexion réussie. Bon retour !");
-      navigate(params.get("next") || paths.home);
+      const next = params.get("next");
+      if (next) navigate(next);
+      else if (user.role === "PROFESSIONAL") navigate(paths.pro);
+      else if (user.role === "ADMIN") navigate(paths.admin);
+      else navigate(paths.home);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Une erreur est survenue.");
     } finally {
