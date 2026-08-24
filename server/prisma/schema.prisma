@@ -1,0 +1,434 @@
+// VEYZA — Prisma schema (SQLite for zero-ops local/dev deploy; swap provider to postgresql for production)
+// NOTE: SQLite has no native enum support, so status/role/type fields are Strings with values
+// documented per-field and validated at the API layer (zod). This keeps a clean upgrade path to Postgres.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- USERS & AUTH ----------
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("CLIENT") // CLIENT | PROFESSIONAL | ADMIN
+  status        String    @default("active") // active | suspended
+  firstName     String
+  lastName      String
+  phone         String?
+  avatarUrl     String?
+  notifyEmail   Boolean   @default(true)
+  notifyBooking Boolean   @default(true)
+  notifyLikes   Boolean   @default(true)
+  notifyFollows Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  professionalProfile ProfessionalProfile?
+  vehicles            Vehicle[]
+  bookingsAsClient    Booking[]            @relation("ClientBookings")
+  posts               Post[]
+  comments            Comment[]
+  likes                Like[]
+  postSaves            PostSave[]
+  favorites            Favorite[]
+  follows              Follow[]
+  reviews              Review[]
+  notifications        Notification[]
+  passwordResets        PasswordReset[]
+  reports               Report[]              @relation("ReporterReports")
+  adminLogs             AdminLog[]
+
+  @@index([role])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------- CATEGORIES ----------
+
+model Category {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+  icon String @default("sparkles")
+
+  professionalProfiles ProfessionalProfile[]
+  services             Service[]
+}
+
+// ---------- PROFESSIONAL ----------
+
+model ProfessionalProfile {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  slug               String    @unique
+  companyName        String
+  description        String    @default("")
+  logoUrl            String?
+  coverUrl            String?
+  phone               String?
+  contactEmail        String?
+  address             String    @default("")
+  city                String    @default("")
+  postalCode          String    @default("")
+  latitude             Float?
+  longitude             Float?
+  website               String?
+  instagram             String?
+  tiktok                String?
+  homeService           Boolean   @default(false)
+  serviceRadiusKm       Int       @default(10)
+
+  status                String    @default("pending") // pending | active | suspended | inactive
+  verified              Boolean   @default(false)
+  isFounder             Boolean   @default(false)
+  founderSince           DateTime?
+  subscriptionPlan       String    @default("free") // free | pro | business | founder
+  commissionOverride     Float?    // optional per-professional override of the plan's commission rate
+
+  onboardingStep         Int       @default(1)
+  profileCompletion      Int       @default(0)
+
+  categoryId              String?
+  viewCount               Int       @default(0)
+
+  createdAt               DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  user                     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category                 Category?       @relation(fields: [categoryId], references: [id])
+  businessHours             BusinessHour[]
+  services                  Service[]
+  galleryImages              GalleryImage[]
+  posts                      Post[]
+  bookings                   Booking[]      @relation("ProfessionalBookings")
+  reviews                    Review[]
+  favoritedBy                Favorite[]
+  followedBy                  Follow[]
+  transactions                 Transaction[]
+  leadConvertedFrom             ProspectLead?  @relation("LeadConversion")
+
+  @@index([status])
+  @@index([city])
+}
+
+model BusinessHour {
+  id             String  @id @default(cuid())
+  professionalId String
+  dayOfWeek      Int     // 0=Sunday .. 6=Saturday
+  openTime       String? // "09:00"
+  closeTime      String? // "18:00"
+  closed         Boolean @default(false)
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, dayOfWeek])
+}
+
+model Service {
+  id             String   @id @default(cuid())
+  professionalId String
+  categoryId     String?
+  name           String
+  description    String   @default("")
+  price          Float
+  durationMinutes Int     @default(60)
+  photoUrl       String?
+  active         Boolean  @default(true)
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  category     Category?           @relation(fields: [categoryId], references: [id])
+  bookings     Booking[]
+
+  @@index([professionalId])
+}
+
+model GalleryImage {
+  id             String  @id @default(cuid())
+  professionalId String
+  url            String
+  position       Int     @default(0)
+  isCover        Boolean @default(false)
+  isBeforeAfter  Boolean @default(false)
+  pairUrl        String? // "after" image when isBeforeAfter is true
+
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId])
+}
+
+// ---------- VEHICLES / GARAGE ----------
+
+model Vehicle {
+  id        String   @id @default(cuid())
+  userId    String
+  make      String
+  model     String
+  year      Int?
+  color     String?
+  mileage   Int?
+  photoUrl  String?
+  plate     String?
+  nickname  String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([userId])
+}
+
+// ---------- BOOKINGS ----------
+
+model Booking {
+  id             String    @id @default(cuid())
+  clientId       String
+  professionalId String
+  serviceId      String
+  vehicleId      String?
+  date           DateTime
+  timeSlot       String    // "14:00"
+  status         String    @default("pending") // pending | confirmed | cancelled | completed | refused
+  price          Float
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  client       User                @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation("ProfessionalBookings", fields: [professionalId], references: [id], onDelete: Cascade)
+  service      Service             @relation(fields: [serviceId], references: [id])
+  vehicle      Vehicle?            @relation(fields: [vehicleId], references: [id])
+  review       Review?
+  transaction  Transaction?
+
+  @@index([professionalId])
+  @@index([clientId])
+  @@index([status])
+}
+
+// ---------- SOCIAL ----------
+
+model Post {
+  id             String   @id @default(cuid())
+  authorUserId   String
+  professionalId String?
+  images         String   // JSON array of URLs
+  description    String   @default("")
+  vehicleTag     String?
+  serviceTag     String?
+  hashtags       String   @default("") // space separated
+  isBeforeAfter  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  author       User                 @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  comments     Comment[]
+  likes         Like[]
+  saves         PostSave[]
+
+  @@index([professionalId])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  text      String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model PostSave {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Favorite {
+  id             String   @id @default(cuid())
+  userId         String
+  professionalId String
+  createdAt      DateTime @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalId])
+}
+
+model Follow {
+  id             String   @id @default(cuid())
+  userId         String
+  professionalId String
+  createdAt      DateTime @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalId])
+}
+
+model Review {
+  id             String   @id @default(cuid())
+  bookingId      String   @unique
+  professionalId String
+  clientId       String
+  rating         Int
+  text           String   @default("")
+  reported       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  booking      Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  client       User                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId])
+}
+
+// ---------- NOTIFICATIONS ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // booking | message | follow | like | comment | review | verified | approved | system
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+// ---------- RECRUITMENT CRM ----------
+
+model ProspectLead {
+  id                     String   @id @default(cuid())
+  businessName           String
+  contactName            String?
+  phone                  String?
+  email                  String?
+  city                   String?
+  instagram              String?
+  tiktok                 String?
+  status                 String   @default("to_contact") // to_contact | contacted | replied | interested | account_created | onboarding | verified | active | refused
+  notes                  String   @default("")
+  convertedProfessionalId String? @unique
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  convertedProfessional ProfessionalProfile? @relation("LeadConversion", fields: [convertedProfessionalId], references: [id])
+
+  @@index([status])
+}
+
+// ---------- MONETIZATION ----------
+
+model CommissionSetting {
+  id           String   @id @default(cuid())
+  plan         String   @unique // free | pro | business | founder
+  label        String
+  ratePercent  Float
+  priceMonthly Float
+  updatedAt    DateTime @updatedAt
+}
+
+model Transaction {
+  id                    String   @id @default(cuid())
+  bookingId             String   @unique
+  professionalId        String
+  grossAmount           Float
+  commissionRateApplied Float
+  commissionAmount      Float
+  netAmount             Float
+  status                String   @default("payment_pending") // payment_pending | paid | refunded | failed | cancelled
+  createdAt             DateTime @default(now())
+
+  booking      Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([professionalId])
+}
+
+// ---------- MODERATION / SUPPORT ----------
+
+model Report {
+  id         String   @id @default(cuid())
+  targetType String   // post | comment | review | professional
+  targetId   String
+  reporterId String
+  reason     String
+  status     String   @default("pending") // pending | reviewed | dismissed
+  createdAt  DateTime @default(now())
+
+  reporter User @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String
+  status    String   @default("new") // new | read
+  createdAt DateTime @default(now())
+}
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String
+  targetType String
+  targetId   String?
+  meta       String?  // JSON string
+  createdAt  DateTime @default(now())
+
+  admin User @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
