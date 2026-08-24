@@ -19,12 +19,13 @@ const loginLimiter = rateLimit({
   message: { error: "Trop de tentatives. Réessayez dans quelques minutes." },
 });
 
-function setSessionCookie(res: any, token: string) {
+function setSessionCookie(res: any, token: string, remember = true) {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
+    // "Remember me" unchecked -> session cookie (cleared when the browser closes) instead of 30 days.
+    ...(remember ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {}),
     path: "/",
   });
 }
@@ -65,6 +66,7 @@ router.post(
 const loginSchema = z.object({
   email: z.string().email("Adresse email invalide."),
   password: z.string().min(1, "Mot de passe requis."),
+  remember: z.boolean().optional(),
 });
 
 router.post(
@@ -80,7 +82,7 @@ router.post(
     if (!valid) throw new ApiError(401, "Email ou mot de passe incorrect.");
 
     const token = signToken({ userId: user.id, role: user.role as any });
-    setSessionCookie(res, token);
+    setSessionCookie(res, token, data.remember ?? true);
     res.json({ user: publicUser(user) });
   })
 );

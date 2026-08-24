@@ -40,6 +40,22 @@ router.get(
 );
 
 router.get(
+  "/plan",
+  asyncHandler(async (req: AuthedRequest, res) => {
+    const profile = await getProfile(req);
+    const setting = await prisma.commissionSetting.findUnique({ where: { plan: profile.subscriptionPlan } });
+    res.json({
+      plan: profile.subscriptionPlan,
+      label: setting?.label ?? profile.subscriptionPlan,
+      priceMonthly: profile.isFounder ? 0 : setting?.priceMonthly ?? 0,
+      ratePercent: profile.commissionOverride ?? setting?.ratePercent ?? 0,
+      isFounder: profile.isFounder,
+      founderSince: profile.founderSince,
+    });
+  })
+);
+
+router.get(
   "/dashboard",
   asyncHandler(async (req: AuthedRequest, res) => {
     const profile = await getProfile(req);
