@@ -2,15 +2,11 @@ services:
   - type: web
     name: veyza-api
     runtime: node
-    plan: starter
+    plan: free
     rootDir: server
     buildCommand: npm install && npx prisma generate && npx prisma migrate deploy && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
-    disk:
-      name: veyza-uploads
-      mountPath: /var/data/uploads
-      sizeGB: 1
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -20,8 +16,6 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
-      - key: UPLOAD_DIR
-        value: /var/data/uploads
       # Set this manually in the Render dashboard once the Vercel project exists —
       # it must be the exact production URL the browser loads (used for CORS + cookies).
       - key: CLIENT_URL
@@ -29,4 +23,4 @@ services:
 
 databases:
   - name: veyza-db
-    plan: starter
+    plan: free

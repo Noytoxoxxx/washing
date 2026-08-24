@@ -16,30 +16,44 @@ code works unchanged.
 
 ## 1. Deploy the backend on Render
 
+`render.yaml` is set to the **free** plan for both the web service and the Postgres database —
+$0 to deploy. See the free-tier tradeoffs below before you start.
+
 1. Push this repo to GitHub (already done if you're reading this from the repo).
-2. In the Render dashboard: **New → Blueprint**, point it at this repo. Render will read
-   `render.yaml` at the repo root and propose:
-   - a **Postgres database** (`veyza-db`)
-   - a **web service** (`veyza-api`) with a 1 GB persistent disk mounted at `/var/data/uploads`
-     for uploaded images (logos, galleries, posts, avatars — these must survive redeploys)
-3. `render.yaml` uses the `starter` plan for both — Render's free tier does not support
-   persistent disks, and uploaded images would be wiped on every deploy without one. If you're
-   just testing and don't care about upload persistence yet, you can switch both `plan` fields
-   to `free` and delete the `disk:` block before deploying.
-4. Render auto-generates `JWT_SECRET` and wires `DATABASE_URL` from the Postgres instance.
+2. In the Render dashboard: **New → Blueprint**, point it at this repo (branch
+   `claude/veyza-v1-complete-9lhf8k`). Render reads `render.yaml` at the repo root and proposes:
+   - a **Postgres database** (`veyza-db`, free)
+   - a **web service** (`veyza-api`, free)
+3. Render auto-generates `JWT_SECRET` and wires `DATABASE_URL` from the Postgres instance.
    **You still need to set `CLIENT_URL` manually** once you know your Vercel URL (step 2) — the
    blueprint leaves it blank (`sync: false`) on purpose. Until then the API will reject
    cross-origin requests from the frontend.
-5. Deploy. The build command runs `prisma migrate deploy` automatically, so the schema is
+4. Deploy. The build command runs `prisma migrate deploy` automatically, so the schema is
    created on first deploy. Note the resulting service URL, e.g.
    `https://veyza-api-xxxx.onrender.com`.
-6. Seed demo data **once**, after the first successful deploy: open a Render Shell for the
+5. Seed demo data **once**, after the first successful deploy: open a Render Shell for the
    `veyza-api` service (Dashboard → Shell) and run:
    ```bash
    npm run seed
    ```
    Re-running it later is safe — professionals/categories/users are upserted, and
    bookings/posts/notifications/prospects are only inserted if those tables are still empty.
+
+### Free-tier tradeoffs
+
+- **The web service spins down after 15 minutes of inactivity** and takes ~30-60s to wake back
+  up on the next request. Fine for a demo/portfolio link, not for something you want always-on
+  without a cold start.
+- **Uploaded images are ephemeral.** Free services can't attach a persistent disk, so anything
+  uploaded through `/pro/profil`, `/pro/galerie`, `/pro/publications`, etc. is wiped on every
+  redeploy (and possibly on a spin-down/restart). Seed data is unaffected since it points at
+  external picsum.photos URLs, not local files. If this becomes a real problem, either upgrade
+  `veyza-api`'s plan to `starter` and add back a `disk:` block (see git history for the exact
+  block — it mounts `/var/data/uploads` and needs `UPLOAD_DIR=/var/data/uploads` in envVars), or
+  swap `upload.ts` for an S3-compatible object store later.
+- **Render's free Postgres is deleted after 90 days.** Fine to start with; if you want to keep
+  this running long-term, you'll need to upgrade the database before then (Render emails a
+  warning ahead of time).
 
 ## 2. Deploy the frontend on Vercel
 
@@ -68,8 +82,8 @@ Open the Vercel URL and confirm:
   return `{"ok":true,"name":"VEYZA API"}`.
 - You can log in with a seeded demo account (see README for credentials) and stay logged in
   across a page refresh (confirms the cookie is being set correctly through the proxy).
-- Uploading an image (e.g. in `/pro/profil`) persists after a Render redeploy, if you attached
-  the persistent disk.
+- First request after a period of inactivity is slow (~30-60s) — that's the free web service
+  waking up, not a bug.
 
 ## Notes
 
